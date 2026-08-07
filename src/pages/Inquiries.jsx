@@ -91,7 +91,12 @@ function InquiryCard({ inquiry, onUpdate }) {
           <div style={{ fontSize: 14, fontWeight: 600, color: '#2a2a2a' }}>{inquiry.name}</div>
           <div style={{ fontSize: 11, color: '#aaa' }}>Inquired {dateStr}{inquiry.event_type ? ` · ${inquiry.event_type}` : ''}</div>
         </div>
-        <StatusBadge status={inquiry.status} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {inquiry.source === 'website' && (
+            <span style={{ fontSize: 10, fontWeight: 700, background: '#eef2ff', color: '#4f46e5', padding: '2px 9px', borderRadius: 20 }}>via website</span>
+          )}
+          <StatusBadge status={inquiry.status} />
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: '#666', marginBottom: 10 }}>
