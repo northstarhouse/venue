@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase, initialAuthType } from './supabase.js';
 import Sidebar from './components/Sidebar.jsx';
 import VenueRentals from './pages/VenueRentals.jsx';
+import Inquiries from './pages/Inquiries.jsx';
 import { NAV_ITEMS, NavIcon } from './nav.jsx';
 
 export const VenueContext = createContext(null);
@@ -152,7 +153,7 @@ export default function App() {
   const [needsPassword, setNeedsPassword] = useState(
     initialAuthType === 'invite' || initialAuthType === 'recovery'
   );
-  const [view, setView]                   = useState('venue');
+  const [view, setView]                   = useState('inquiries');
   const [isMobile, setIsMobile]           = useState(window.innerWidth < 768);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -178,7 +179,7 @@ export default function App() {
   async function signOut() {
     await supabase.auth.signOut();
     setNeedsPassword(false);
-    setView('venue');
+    setView('inquiries');
   }
 
   if (session === undefined) return <Spinner />;
@@ -186,6 +187,7 @@ export default function App() {
   if (!session) return <AuthScreen />;
 
   const pages = {
+    inquiries: <Inquiries />,
     venue: <VenueRentals />,
   };
   const activeItem = NAV_ITEMS.find(i => i.key === view) || NAV_ITEMS[0];
@@ -245,7 +247,7 @@ export default function App() {
           </div>
           <div style={{ flex: 1, padding: isMobile ? '16px 14px' : '28px 32px' }}>
             <div style={{ maxWidth: 900 }}>
-              {pages[view] ?? pages.venue}
+              {pages[view] ?? pages.inquiries}
             </div>
           </div>
         </div>
