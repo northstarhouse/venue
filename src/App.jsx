@@ -1,8 +1,8 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase, initialAuthType } from './supabase.js';
-import Nav from './components/Nav.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import VenueRentals from './pages/VenueRentals.jsx';
+import { NAV_ITEMS, NavIcon } from './nav.jsx';
 
 export const VenueContext = createContext(null);
 export const useVenue = () => useContext(VenueContext);
@@ -154,6 +154,7 @@ export default function App() {
   );
   const [view, setView]                   = useState('venue');
   const [isMobile, setIsMobile]           = useState(window.innerWidth < 768);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -187,26 +188,68 @@ export default function App() {
   const pages = {
     venue: <VenueRentals />,
   };
+  const activeItem = NAV_ITEMS.find(i => i.key === view) || NAV_ITEMS[0];
 
   return (
     <VenueContext.Provider value={{ session, signOut, setView }}>
-      {isMobile ? (
-        <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 72 }}>
-          <div style={{ maxWidth: 900, margin: '0 auto' }}>
-            {pages[view] ?? pages.venue}
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', fontFamily: 'system-ui, sans-serif' }}>
+        {!isMobile && <Sidebar view={view} setView={setView} />}
+
+        {isMobile && mobileMenuOpen && (
+          <div onClick={() => setMobileMenuOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 260, background: '#2a2a2e', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '20px 16px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+                <img src="assets/logo.png" alt="NSH" style={{ height: 32 }} />
+                <button onClick={() => setMobileMenuOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
+              </div>
+              <nav style={{ flex: 1, padding: '8px 8px' }}>
+                {NAV_ITEMS.map(item => (
+                  <button key={item.key} onClick={() => { setView(item.key); setMobileMenuOpen(false); }} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 12px',
+                    background: view === item.key ? 'rgba(181,161,133,0.15)' : 'transparent',
+                    border: 'none', borderRadius: 7, cursor: 'pointer', textAlign: 'left',
+                    color: view === item.key ? '#f0ebe3' : 'rgba(255,255,255,0.5)',
+                    fontSize: 13, fontWeight: view === item.key ? 600 : 400, marginBottom: 2,
+                  }}>
+                    <NavIcon id={item.key} active={view === item.key} />
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+              <div style={{ padding: '12px 8px 20px', borderTop: '0.5px solid rgba(255,255,255,0.08)' }}>
+                <button onClick={() => { signOut(); setMobileMenuOpen(false); }} style={{
+                  width: '100%', padding: '10px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                  background: 'rgba(255,255,255,0.05)', border: '0.5px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 500,
+                }}>
+                  Sign Out
+                </button>
+              </div>
+            </div>
           </div>
-          <Nav view={view} setView={setView} />
-        </div>
-      ) : (
-        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
-          <Sidebar view={view} setView={setView} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        )}
+
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ background: '#fdfcfb', padding: isMobile ? '12px 16px 10px' : '24px 32px 18px', borderBottom: '3px solid rgba(136,108,68,0.35)', position: 'sticky', top: 0, zIndex: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14 }}>
+              {isMobile && (
+                <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#888', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+                </button>
+              )}
+              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'rgba(136,108,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <NavIcon id={activeItem.key} active={true} />
+              </div>
+              <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 700, color: 'var(--gold)', fontFamily: "'Cardo', serif", textShadow: '1px 2px 0px rgba(136,108,68,0.2)' }}>{activeItem.label}</h1>
+            </div>
+          </div>
+          <div style={{ flex: 1, padding: isMobile ? '16px 14px' : '28px 32px' }}>
+            <div style={{ maxWidth: 900 }}>
               {pages[view] ?? pages.venue}
             </div>
           </div>
         </div>
-      )}
+      </div>
     </VenueContext.Provider>
   );
 }
