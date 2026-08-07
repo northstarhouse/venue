@@ -208,7 +208,7 @@ export default function VenueRentals() {
 
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ fontSize: 24, fontWeight: 700, color: '#2a2a2a', fontFamily: "'Cardo', serif", marginBottom: 6 }}>Venue Rentals</div>
+      <div style={{ fontSize: 24, fontWeight: 700, color: '#2a2a2a', fontFamily: "'Cardo', serif", marginBottom: 6 }}>After Event Flow</div>
       <div style={{ fontSize: 13, color: '#aaa', marginBottom: 24 }}>Wedding tracking and post-event checklist</div>
 
       {loading && <div style={{ color: '#aaa', fontSize: 13, padding: 40, textAlign: 'center' }}>Loading calendar…</div>}
