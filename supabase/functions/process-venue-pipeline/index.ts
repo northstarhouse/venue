@@ -6,6 +6,7 @@
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SCHEDULING_BASE_URL = 'https://northstarhouse.github.io/venue/';
+const LOGO_URL = 'https://northstarhouse.github.io/venue/assets/logo.png';
 const TZ = 'America/Los_Angeles';
 
 const headers = (extra?: Record<string, string>) => ({
@@ -22,12 +23,12 @@ async function rest(path: string, init: RequestInit = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-let templateCache: Record<string, { subject: string; body: string }> | null = null;
+let templateCache: Record<string, { subject: string; body: string; html_body: string }> | null = null;
 async function getTemplates() {
   if (templateCache) return templateCache;
-  const rows = await rest('venue_email_templates?select=key,subject,body');
+  const rows = await rest('venue_email_templates?select=key,subject,body,html_body');
   templateCache = {};
-  for (const r of rows) templateCache[r.key] = { subject: r.subject, body: r.body };
+  for (const r of rows) templateCache[r.key] = { subject: r.subject, body: r.body, html_body: r.html_body || '' };
   return templateCache;
 }
 
@@ -38,20 +39,83 @@ function fmtTime(d: string | Date) {
   return new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ });
 }
 
-function render(tpl: { subject: string; body: string }, vars: Record<string, string>) {
-  const sub = (s: string) => s.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '');
-  return { subject: sub(tpl.subject), body: sub(tpl.body) };
+function escapeHtml(s: unknown) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 }
 
-async function sendEmail(to: string, subject: string, body: string) {
+function fillTemplate(tpl: string, vars: Record<string, string>) {
+  return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '');
+}
+
+// ── Branded HTML email shell ────────────────────────────────────────────────
+function renderShell(innerHtml: string) {
+  return `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f7f3ec;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f3ec;padding:32px 16px;">
+      <tr><td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e8e0d5;">
+          <tr><td style="background:#2a2a2e;padding:24px;text-align:center;">
+            <img src="${LOGO_URL}" alt="North Star House" width="180" style="display:block;margin:0 auto;max-width:180px;height:auto;" />
+          </td></tr>
+          <tr><td style="padding:32px 36px;font-family:Helvetica,Arial,sans-serif;">
+            ${innerHtml}
+          </td></tr>
+          <tr><td style="background:#f7f3ec;padding:20px 36px;border-top:1px solid #e8e0d5;text-align:center;font-family:Helvetica,Arial,sans-serif;">
+            <div style="font-size:11px;color:#999;">North Star House</div>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}
+
+// ── Self-scheduling widget: clickable open tour times ───────────────────────
+async function fetchOpenSlots(limit = 5) {
+  const nowIso = new Date().toISOString();
+  const rows = await rest(`venue_tour_availability?select=id,slot_start,venue_tour_hosts(name)&is_booked=eq.false&slot_start=gt.${encodeURIComponent(nowIso)}&order=slot_start.asc&limit=${limit}`);
+  return (rows || []).map((r: any) => ({ id: r.id, slot_start: r.slot_start, hostName: r.venue_tour_hosts?.name }));
+}
+
+function renderSlotsWidget(inquiryId: number, slots: { id: number; slot_start: string; hostName?: string }[]) {
+  const seeAllLink = `${SCHEDULING_BASE_URL}?schedule=${inquiryId}`;
+  if (!slots.length) {
+    return `<p style="font-size:13px;color:#999;">No open tour times right now — reply to this email and we'll find a time together.</p>`;
+  }
+  const rows = slots.map((s) => {
+    const link = `${SCHEDULING_BASE_URL}?schedule=${inquiryId}&slot=${s.id}`;
+    return `<tr><td style="padding:0 0 8px;">
+      <a href="${link}" style="display:block;background:#f7f3ec;border:1px solid #e0d8cc;border-radius:10px;padding:12px 16px;text-decoration:none;">
+        <span style="font-size:13px;font-weight:700;color:#2a2a2a;">${escapeHtml(fmtDate(s.slot_start))}</span><br/>
+        <span style="font-size:12px;color:#666;">${escapeHtml(fmtTime(s.slot_start))} with ${escapeHtml(s.hostName || 'our team')}</span>
+      </a>
+    </td></tr>`;
+  }).join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+    <p style="margin:14px 0 0;text-align:center;"><a href="${seeAllLink}" style="font-size:12px;color:#886c44;">See all available times →</a></p>`;
+}
+
+async function sendEmail(to: string, subject: string, body: string, html?: string) {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_KEY}` },
-    body: JSON.stringify({ to, subject, body, sender: 'Venue Team' }),
+    body: JSON.stringify({ to, subject, body, ...(html ? { html } : {}), sender: 'Venue Team' }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `send-email HTTP ${res.status}`);
   return data;
+}
+
+// Renders both the plain-text and HTML versions of a template. `textVars` are
+// substituted as-is into the text body; `htmlVars` are substituted into the
+// HTML body (caller is responsible for escaping any free-text values, e.g.
+// inquiry name, before passing them here — links/dates built by us are safe raw).
+async function sendTemplated(tpl: { subject: string; body: string; html_body: string }, to: string, textVars: Record<string, string>, htmlVars: Record<string, string>) {
+  const subject = fillTemplate(tpl.subject, textVars);
+  const body = fillTemplate(tpl.body, textVars);
+  const html = tpl.html_body ? renderShell(fillTemplate(tpl.html_body, htmlVars)) : undefined;
+  return sendEmail(to, subject, body, html);
 }
 
 Deno.serve(async () => {
@@ -60,14 +124,17 @@ Deno.serve(async () => {
   const templates = await getTemplates();
   const result: Record<string, number> = { initial: 0, followUp48h: 0, finalFollowUp30d: 0, archived: 0, tourConfirmation: 0, reminder24h: 0, reminder1h: 0, touredDocs: 0, errors: 0 };
 
-  // ── Step 1: New wedding inquiries -> send initial guide + scheduling link ──
+  // ── Step 1: New wedding inquiries -> send initial guide + scheduling widget ──
   try {
     const rows = await rest(`venue_inquiries?select=*&status=eq.New&email=not.is.null`);
     for (const inq of rows) {
       try {
         const link = `${SCHEDULING_BASE_URL}?schedule=${inq.id}`;
-        const { subject, body } = render(templates.initial_inquiry, { name: inq.name, event_date: inq.event_date || '', scheduling_link: link });
-        await sendEmail(inq.email, subject, body);
+        const slots = await fetchOpenSlots();
+        const widget = renderSlotsWidget(inq.id, slots);
+        await sendTemplated(templates.initial_inquiry, inq.email,
+          { name: inq.name, event_date: inq.event_date || '', scheduling_link: link },
+          { name: escapeHtml(inq.name), event_date: escapeHtml(inq.event_date || ''), scheduling_link: link, slots_widget: widget });
         await rest(`venue_inquiries?id=eq.${inq.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Initial Inquiry Sent', initial_sent_at: nowIso }) });
         result.initial++;
       } catch (e) { console.error('initial_inquiry failed for', inq.id, e); result.errors++; }
@@ -81,8 +148,11 @@ Deno.serve(async () => {
     for (const inq of rows) {
       try {
         const link = `${SCHEDULING_BASE_URL}?schedule=${inq.id}`;
-        const { subject, body } = render(templates.follow_up_48h, { name: inq.name, scheduling_link: link });
-        await sendEmail(inq.email, subject, body);
+        const slots = await fetchOpenSlots();
+        const widget = renderSlotsWidget(inq.id, slots);
+        await sendTemplated(templates.follow_up_48h, inq.email,
+          { name: inq.name, scheduling_link: link },
+          { name: escapeHtml(inq.name), scheduling_link: link, slots_widget: widget });
         await rest(`venue_inquiries?id=eq.${inq.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Follow Up Sent', follow_up_sent_at: nowIso }) });
         result.followUp48h++;
       } catch (e) { console.error('follow_up_48h failed for', inq.id, e); result.errors++; }
@@ -97,8 +167,11 @@ Deno.serve(async () => {
     for (const inq of rows) {
       try {
         const link = `${SCHEDULING_BASE_URL}?schedule=${inq.id}`;
-        const { subject, body } = render(templates.final_follow_up_30d, { name: inq.name, scheduling_link: link });
-        await sendEmail(inq.email, subject, body);
+        const slots = await fetchOpenSlots();
+        const widget = renderSlotsWidget(inq.id, slots);
+        await sendTemplated(templates.final_follow_up_30d, inq.email,
+          { name: inq.name, scheduling_link: link },
+          { name: escapeHtml(inq.name), scheduling_link: link, slots_widget: widget });
         await rest(`venue_inquiries?id=eq.${inq.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Final Follow Up Sent', final_follow_up_sent_at: nowIso }) });
         result.finalFollowUp30d++;
       } catch (e) { console.error('final_follow_up_30d failed for', inq.id, e); result.errors++; }
@@ -124,10 +197,10 @@ Deno.serve(async () => {
       const inq = tour.venue_inquiries;
       if (!inq?.email) continue;
       try {
-        const { subject, body } = render(templates.tour_confirmation, {
-          name: inq.name, host_name: tour.venue_tour_hosts?.name || '', tour_date: fmtDate(tour.slot_start), tour_time: fmtTime(tour.slot_start),
-        });
-        await sendEmail(inq.email, subject, body);
+        const hostName = tour.venue_tour_hosts?.name || '';
+        await sendTemplated(templates.tour_confirmation, inq.email,
+          { name: inq.name, host_name: hostName, tour_date: fmtDate(tour.slot_start), tour_time: fmtTime(tour.slot_start) },
+          { name: escapeHtml(inq.name), host_name: escapeHtml(hostName), tour_date: escapeHtml(fmtDate(tour.slot_start)), tour_time: escapeHtml(fmtTime(tour.slot_start)) });
         await rest(`venue_tours?id=eq.${tour.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ confirmation_sent_at: nowIso }) });
         await rest(`venue_inquiries?id=eq.${inq.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Tour Scheduled' }) });
         result.tourConfirmation++;
@@ -143,10 +216,10 @@ Deno.serve(async () => {
       const inq = tour.venue_inquiries;
       if (!inq?.email) continue;
       try {
-        const { subject, body } = render(templates.tour_reminder_24h, {
-          name: inq.name, host_name: tour.venue_tour_hosts?.name || '', tour_date: fmtDate(tour.slot_start), tour_time: fmtTime(tour.slot_start),
-        });
-        await sendEmail(inq.email, subject, body);
+        const hostName = tour.venue_tour_hosts?.name || '';
+        await sendTemplated(templates.tour_reminder_24h, inq.email,
+          { name: inq.name, host_name: hostName, tour_date: fmtDate(tour.slot_start), tour_time: fmtTime(tour.slot_start) },
+          { name: escapeHtml(inq.name), host_name: escapeHtml(hostName), tour_date: escapeHtml(fmtDate(tour.slot_start)), tour_time: escapeHtml(fmtTime(tour.slot_start)) });
         await rest(`venue_tours?id=eq.${tour.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ reminder_24h_sent_at: nowIso }) });
         result.reminder24h++;
       } catch (e) { console.error('reminder_24h failed for', tour.id, e); result.errors++; }
@@ -161,10 +234,10 @@ Deno.serve(async () => {
       const inq = tour.venue_inquiries;
       if (!inq?.email) continue;
       try {
-        const { subject, body } = render(templates.tour_reminder_1h, {
-          name: inq.name, host_name: tour.venue_tour_hosts?.name || '', tour_date: fmtDate(tour.slot_start), tour_time: fmtTime(tour.slot_start),
-        });
-        await sendEmail(inq.email, subject, body);
+        const hostName = tour.venue_tour_hosts?.name || '';
+        await sendTemplated(templates.tour_reminder_1h, inq.email,
+          { name: inq.name, host_name: hostName, tour_date: fmtDate(tour.slot_start), tour_time: fmtTime(tour.slot_start) },
+          { name: escapeHtml(inq.name), host_name: escapeHtml(hostName), tour_date: escapeHtml(fmtDate(tour.slot_start)), tour_time: escapeHtml(fmtTime(tour.slot_start)) });
         await rest(`venue_tours?id=eq.${tour.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ reminder_1h_sent_at: nowIso }) });
         result.reminder1h++;
       } catch (e) { console.error('reminder_1h failed for', tour.id, e); result.errors++; }
@@ -179,10 +252,10 @@ Deno.serve(async () => {
       const inq = tour.venue_inquiries;
       try {
         if (inq?.email) {
-          const { subject, body } = render(templates.toured_docs, {
-            name: inq.name, host_name: tour.venue_tour_hosts?.name || '', guidebook_link: '', prebooking_link: '',
-          });
-          await sendEmail(inq.email, subject, body);
+          const hostName = tour.venue_tour_hosts?.name || '';
+          await sendTemplated(templates.toured_docs, inq.email,
+            { name: inq.name, host_name: hostName, guidebook_link: '', prebooking_link: '' },
+            { name: escapeHtml(inq.name), host_name: escapeHtml(hostName), guidebook_link: '', prebooking_link: '' });
         }
         await rest(`venue_tours?id=eq.${tour.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ docs_sent_at: nowIso, status: 'Completed' }) });
         if (inq?.id) await rest(`venue_inquiries?id=eq.${inq.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Toured - Docs Sent' }) });

@@ -7,7 +7,9 @@ import TourBookings from './pages/TourBookings.jsx';
 import PublicSchedule from './pages/PublicSchedule.jsx';
 import { NAV_ITEMS, NavIcon } from './nav.jsx';
 
-const publicScheduleId = new URLSearchParams(window.location.search).get('schedule');
+const publicScheduleParams = new URLSearchParams(window.location.search);
+const publicScheduleId = publicScheduleParams.get('schedule');
+const publicScheduleSlotId = publicScheduleParams.get('slot');
 
 export const VenueContext = createContext(null);
 export const useVenue = () => useContext(VenueContext);
@@ -153,7 +155,7 @@ function Spinner({ message }) {
 // ── Main App ──────────────────────────────────────────────────────────────────
 
 export default function App() {
-  if (publicScheduleId) return <PublicSchedule inquiryId={publicScheduleId} />;
+  if (publicScheduleId) return <PublicSchedule inquiryId={publicScheduleId} preselectedSlotId={publicScheduleSlotId} />;
 
   const [session, setSession]             = useState(undefined);
   const [needsPassword, setNeedsPassword] = useState(
