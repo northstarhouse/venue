@@ -5,6 +5,60 @@ const gold = '#886c44';
 
 const SCHEDULE_COLUMNS = ['Outdoor Setup', 'House Access', 'Guests Arrive', 'Ceremony', 'Cocktail Hour', 'Dining', 'Guests Leave', 'Out Time'];
 
+const CHECKLIST_PAGE_1 = [
+  { room: 'Terrace & West Lawn', items: ['Outside lights on', 'Lawn cleared and tidy'] },
+  { room: 'Living Room', items: ['Lights on'] },
+  { room: 'Library', items: ['Lights on', 'Chairs off table', 'Doors unlocked'] },
+  { room: 'Julia Morgan Room', items: ['Lights on', 'Doors unlocked', 'Chairs off tables', 'Coat rack from foyer', 'Waste basket lined', 'Put away decor items (See SM Guidebook)'] },
+  { room: 'Restrooms & Foyer', items: ['Lights on', 'Cans lined', 'Paper products stocked'] },
+  { room: 'Courtyard & East Lawn', items: ['Twinkle lights on', 'Courtyard lights on', 'Lawn lights on'] },
+  { room: 'Parking Lot', items: ['Flood lights on'] },
+  { room: 'Garden', items: ['Unlock', 'Clear & clean'] },
+];
+
+const CHECKLIST_PAGE_2 = [
+  { room: 'Outdoor Restrooms', items: ['Breaker on', 'Doors unlocked', 'Lights on', 'Paper products stocked', 'Cans lined'] },
+  { room: 'Kitchen', items: ['Lights on', 'Contact info posted on fridge', 'Supply bin stocked', 'Can liners available', 'Pantry locked', 'Counters clear', 'Fridge turned on', 'Restroom stocked'] },
+  { room: 'Trash Corral', items: ['Plug in walkway lights', 'Place trash & recycle bins out'] },
+  { room: 'Dining Room', items: ['Lights on', 'Chairs off tables', 'Table sleeves on', 'Porch door locked'] },
+  { room: 'Mudroom & Study', items: ['Lights on', 'Wastebasket lined', 'Mirrors from foyer in place', 'Clothing rack pulled out'] },
+];
+
+function WalkThroughPage({ sections }) {
+  return (
+    <div className="page-break" style={{ maxWidth: 760, margin: '24px auto 0', padding: '28px 24px', border: `2px solid ${gold}`, borderRadius: 4 }}>
+      <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Cardo', serif", textAlign: 'center', color: gold, marginBottom: 16 }}>Walk-Through &amp; Checklist</div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th></th>
+            <th style={{ fontSize: 11, fontWeight: 700, color: '#555', padding: '0 0 6px' }}>Before</th>
+            <th style={{ fontSize: 11, fontWeight: 700, color: '#555', padding: '0 0 6px' }}>After</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sections.map(s => (
+            <tr key={s.room}>
+              <td style={{ verticalAlign: 'top', padding: '10px 12px 10px 0', width: '58%' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{s.room}</div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: '#555', lineHeight: 1.6 }}>
+                  {s.items.map(it => <li key={it}>{it}</li>)}
+                </ul>
+              </td>
+              <td style={{ verticalAlign: 'top', padding: '10px 6px' }}>
+                <div style={{ border: '1px solid #ccc', borderRadius: 3, minHeight: 18 + s.items.length * 16 }}>&nbsp;</div>
+              </td>
+              <td style={{ verticalAlign: 'top', padding: '10px 0 10px 6px' }}>
+                <div style={{ border: '1px solid #ccc', borderRadius: 3, minHeight: 18 + s.items.length * 16 }}>&nbsp;</div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function Line({ label, value, wide }) {
   return (
     <div style={{ flex: wide ? '1 1 100%' : '1 1 45%', minWidth: 160, marginBottom: 10 }}>
@@ -132,8 +186,39 @@ export default function SiteManagerForm({ inquiryId }) {
         </div>
       </div>
 
-      {/* ── Security Deposit Accounting Form ── */}
-      <div className="page-break" style={{ maxWidth: 760, margin: '24px auto 60px', padding: '28px 24px', border: `2px solid ${gold}`, borderRadius: 4 }}>
+      {/* ── Pages 2 & 3: Walk-Through & Checklist ── */}
+      <WalkThroughPage sections={CHECKLIST_PAGE_1} />
+      <WalkThroughPage sections={CHECKLIST_PAGE_2} />
+
+      {/* ── Page 4 top: Site Manager sign-off ── */}
+      <div className="page-break" style={{ maxWidth: 760, margin: '24px auto 0', padding: '24px 24px 0', border: `2px solid ${gold}`, borderBottom: 'none', borderRadius: '4px 4px 0 0' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: gold, textAlign: 'center', marginBottom: 14 }}>Top Half to Be Completed by Site Manager</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 30px', marginBottom: 16, fontSize: 12 }}>
+          {['All rentals put away', 'Trash & recycling handled properly', 'No pets on site', 'No evidence of smoking or fire'].map(label => (
+            <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '1 1 40%', minWidth: 200 }}>
+              <span style={{ width: 14, height: 14, border: '1px solid #999', display: 'inline-block', flexShrink: 0 }} />
+              {label}
+            </label>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Areas of Immediate Attention/Need</div>
+        <div style={{ fontSize: 10, color: '#aaa', fontStyle: 'italic', marginBottom: 4 }}>(i.e. extra hours added, maintenance needs, event mishaps)</div>
+        {[1, 2].map(i => <div key={i} style={{ borderBottom: '1px solid #ccc', minHeight: 18, marginBottom: 6 }}>&nbsp;</div>)}
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, margin: '16px 0' }}>
+          <BlankLine label="Time In" />
+          <BlankLine label="Time Out" />
+          <BlankLine label="Total Hours" />
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
+          <BlankLine label="Site Manager" />
+          <BlankLine label="Signature" />
+        </div>
+      </div>
+
+      {/* ── Page 4 bottom: Security Deposit Accounting Form ── */}
+      <div style={{ maxWidth: 760, margin: '0 auto 60px', padding: '20px 24px 28px', border: `2px solid ${gold}`, borderTop: `1px dashed ${gold}`, borderRadius: '0 0 4px 4px' }}>
+        <div style={{ fontSize: 10, color: '#888', textAlign: 'center', marginBottom: 12 }}>Bottom Half of Page to Be Completed by Management</div>
         <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Cardo', serif", textAlign: 'center', color: gold, marginBottom: 20 }}>Security Deposit Accounting Form</div>
 
         <Line label="Event Name & Date" value={`${inquiry.name}${eventDateStr ? ' — ' + eventDateStr : ''}`} wide />
