@@ -10,6 +10,16 @@ function fmtTime(d) {
   return new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
 }
 
+function CheckIcon() {
+  return (
+    <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#f0ebe2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </div>
+  );
+}
+
 export default function PublicSchedule({ inquiryId, preselectedSlotId }) {
   const [inquiry, setInquiry] = useState(undefined);
   const [slots, setSlots] = useState([]);
@@ -79,88 +89,87 @@ export default function PublicSchedule({ inquiryId, preselectedSlotId }) {
     setBooking(false);
   }
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</div>
-      </div>
-    );
-  }
-
-  const preselected = preselectedSlotId ? slots.find(s => String(s.id) === String(preselectedSlotId)) : null;
+  const preselected = !loading && preselectedSlotId ? slots.find(s => String(s.id) === String(preselectedSlotId)) : null;
   const otherSlots = preselected ? slots.filter(s => s.id !== preselected.id) : slots;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 16px' }}>
-      <div style={{ maxWidth: 480, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <img src="assets/logo.png" alt="North Star House" style={{ width: 220, margin: '0 auto 12px', display: 'block' }} />
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#2a2a2a', fontFamily: "'Cardo', serif" }}>Schedule Your Tour</div>
-        </div>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+      <div style={{ background: '#2a2a2e', padding: '28px 16px', textAlign: 'center' }}>
+        <img src="assets/logo.png" alt="North Star House" style={{ width: 200, maxWidth: '100%', margin: '0 auto', display: 'block' }} />
+      </div>
 
-        {error && <div style={{ color: '#c0392b', fontSize: 13, background: '#fbe9e7', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>{error}</div>}
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '36px 16px 60px' }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: '#2a2a2a', fontFamily: "'Cardo', serif", textAlign: 'center', marginBottom: 24 }}>Schedule Your Tour</div>
 
-        {booked ? (
-          <div className="card" style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 30, marginBottom: 10 }}>🎉</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#2a2a2a', marginBottom: 6 }}>Tour Confirmed!</div>
-            <div style={{ fontSize: 13, color: '#666', lineHeight: 1.6 }}>
-              {fmtDate(booked.slot_start)}
-              <br />
-              {fmtTime(booked.slot_start)}
-              {booked.host?.name ? ` with ${booked.host.name}` : ''}
-            </div>
-            <div style={{ fontSize: 12, color: '#999', marginTop: 14 }}>A confirmation email is on its way to you.</div>
-          </div>
-        ) : !inquiry ? null : (
+        {loading ? (
+          <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--muted)', padding: '40px 0' }}>Loading…</div>
+        ) : (
           <>
-            <div className="card" style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 13, color: '#666' }}>Hi <strong>{inquiry.name}</strong> — pick a time below to tour North Star House with Jen or Sierra.</div>
-            </div>
+            {error && <div style={{ color: '#c0392b', fontSize: 13, background: '#fbe9e7', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>{error}</div>}
 
-            {preselectedSlotId && !preselected && (
-              <div style={{ fontSize: 12, color: '#999', background: '#fff', border: '0.5px solid var(--border)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-                That time is no longer available — please choose another below.
-              </div>
-            )}
-
-            {preselected && (
-              <div style={{ marginBottom: 18 }}>
-                <div className="card" style={{ border: `1.5px solid ${gold}`, background: '#faf7f2' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: gold, marginBottom: 8 }}>Your Requested Time</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#2a2a2a' }}>{fmtDate(preselected.slot_start)}</div>
-                  <div style={{ fontSize: 13, color: '#666', marginBottom: 14 }}>{fmtTime(preselected.slot_start)} with {preselected.venue_tour_hosts?.name || 'our team'}</div>
-                  <button disabled={booking} onClick={() => bookSlot(preselected)} className="btn-gold" style={{ width: '100%', padding: '11px' }}>
-                    {booking ? 'Booking…' : 'Confirm This Time'}
-                  </button>
+            {booked ? (
+              <div className="card" style={{ textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+                <CheckIcon />
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#2a2a2a', fontFamily: "'Cardo', serif", marginBottom: 10 }}>Tour Confirmed!</div>
+                <div style={{ fontSize: 14, color: '#555', lineHeight: 1.7 }}>
+                  {fmtDate(booked.slot_start)}
+                  <br />
+                  {fmtTime(booked.slot_start)}
+                  {booked.host?.name ? ` with ${booked.host.name}` : ''}
                 </div>
-                {!showAllTimes && (
-                  <button onClick={() => setShowAllTimes(true)} style={{ background: 'none', border: 'none', color: gold, fontSize: 12, cursor: 'pointer', marginTop: 10, padding: 0 }}>
-                    Choose a different time →
-                  </button>
-                )}
+                <div style={{ fontSize: 12, color: '#999', marginTop: 16 }}>A confirmation email is on its way to you.</div>
               </div>
-            )}
-
-            {showAllTimes && (
+            ) : !inquiry ? null : (
               <>
-                {otherSlots.length === 0 && !preselected && (
-                  <div style={{ background: '#fff', border: '0.5px solid var(--border)', borderRadius: 12, padding: 30, textAlign: 'center', color: '#bbb', fontSize: 13 }}>
-                    No open tour times right now — please reach out to us directly to find a time.
+                <div className="card" style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 13, color: '#666' }}>Hi <strong>{inquiry.name}</strong> — pick a time below to tour North Star House with Jen or Sierra.</div>
+                </div>
+
+                {preselectedSlotId && !preselected && (
+                  <div style={{ fontSize: 12, color: '#999', background: '#fff', border: '0.5px solid var(--border)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+                    That time is no longer available — please choose another below.
                   </div>
                 )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {otherSlots.map(slot => (
-                    <button key={slot.id} disabled={booking} onClick={() => bookSlot(slot)} className="card"
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: booking ? 'default' : 'pointer', border: '0.5px solid var(--border)', textAlign: 'left', width: '100%' }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#2a2a2a' }}>{fmtDate(slot.slot_start)} · {fmtTime(slot.slot_start)}</div>
-                        <div style={{ fontSize: 12, color: '#999' }}>with {slot.venue_tour_hosts?.name || 'our team'}</div>
+
+                {preselected && (
+                  <div style={{ marginBottom: 18 }}>
+                    <div className="card" style={{ border: `1.5px solid ${gold}`, background: '#faf7f2' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: gold, marginBottom: 8 }}>Your Requested Time</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: '#2a2a2a' }}>{fmtDate(preselected.slot_start)}</div>
+                      <div style={{ fontSize: 13, color: '#666', marginBottom: 14 }}>{fmtTime(preselected.slot_start)} with {preselected.venue_tour_hosts?.name || 'our team'}</div>
+                      <button disabled={booking} onClick={() => bookSlot(preselected)} className="btn-gold" style={{ width: '100%', padding: '11px' }}>
+                        {booking ? 'Booking…' : 'Confirm This Time'}
+                      </button>
+                    </div>
+                    {!showAllTimes && (
+                      <button onClick={() => setShowAllTimes(true)} style={{ background: 'none', border: 'none', color: gold, fontSize: 12, cursor: 'pointer', marginTop: 10, padding: 0 }}>
+                        Choose a different time →
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {showAllTimes && (
+                  <>
+                    {otherSlots.length === 0 && !preselected && (
+                      <div style={{ background: '#fff', border: '0.5px solid var(--border)', borderRadius: 12, padding: 30, textAlign: 'center', color: '#bbb', fontSize: 13 }}>
+                        No open tour times right now — please reach out to us directly to find a time.
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: gold }}>Select →</span>
-                    </button>
-                  ))}
-                </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {otherSlots.map(slot => (
+                        <button key={slot.id} disabled={booking} onClick={() => bookSlot(slot)} className="card"
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: booking ? 'default' : 'pointer', border: '0.5px solid var(--border)', textAlign: 'left', width: '100%' }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#2a2a2a' }}>{fmtDate(slot.slot_start)} · {fmtTime(slot.slot_start)}</div>
+                            <div style={{ fontSize: 12, color: '#999' }}>with {slot.venue_tour_hosts?.name || 'our team'}</div>
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: gold }}>Select →</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </>
