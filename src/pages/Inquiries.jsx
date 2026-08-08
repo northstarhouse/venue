@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabase.js';
 
 const gold = '#886c44';
-const STATUSES = ['New', 'Initial Inquiry Sent', 'Follow Up Sent', 'Final Follow Up Sent', 'Tour Scheduled', 'Toured - Docs Sent', 'Booked', 'Declined', 'Archive'];
+const STATUSES = ['New', 'Initial Inquiry Sent', 'Follow Up Sent', 'Final Follow Up Sent', 'Tour Scheduled', 'Toured - Docs Sent', 'Booking', 'Proposal Sent', 'Booked', 'Declined', 'Archive'];
 const STATUS_COLORS = {
   'New': { bg: '#fff3e0', fg: '#e6862b' },
   'Initial Inquiry Sent': { bg: '#e3f2fd', fg: '#1976d2' },
@@ -10,6 +10,8 @@ const STATUS_COLORS = {
   'Final Follow Up Sent': { bg: '#fff8e1', fg: '#b8860b' },
   'Tour Scheduled': { bg: '#f3e5f5', fg: '#7c3aed' },
   'Toured - Docs Sent': { bg: '#ede7f6', fg: '#5e35b1' },
+  'Booking': { bg: '#fff3e0', fg: '#c77700' },
+  'Proposal Sent': { bg: '#e0f7fa', fg: '#00838f' },
   'Booked': { bg: '#e8f5e9', fg: '#2e7d32' },
   'Declined': { bg: '#fbe9e7', fg: '#c0392b' },
   'Archive': { bg: '#f0f0f0', fg: '#888' },
@@ -72,10 +74,23 @@ function NewInquiryForm({ onCreated, onCancel }) {
 function InquiryCard({ inquiry, onUpdate }) {
   const [notes, setNotes] = useState(inquiry.notes || '');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [sendingProposal, setSendingProposal] = useState(false);
+  const [proposalError, setProposalError] = useState('');
 
   async function changeStatus(status) {
     const { data, error } = await supabase.from('venue_inquiries').update({ status }).eq('id', inquiry.id).select();
     if (!error && data?.[0]) onUpdate(data[0]);
+  }
+
+  async function sendProposal() {
+    setSendingProposal(true);
+    setProposalError('');
+    const { data, error } = await supabase.functions.invoke('process-venue-pipeline', {
+      body: { action: 'send_proposal', inquiryId: inquiry.id },
+    });
+    setSendingProposal(false);
+    if (error || data?.error) { setProposalError(error?.message || data?.error || 'Failed to send proposal.'); return; }
+    onUpdate({ ...inquiry, status: 'Proposal Sent', proposal_sent_at: new Date().toISOString() });
   }
 
   async function saveNotes() {
@@ -113,6 +128,21 @@ function InquiryCard({ inquiry, onUpdate }) {
       {inquiry.message && (
         <div style={{ fontSize: 13, color: '#444', background: 'var(--light)', borderRadius: 8, padding: '10px 12px', marginBottom: 10, whiteSpace: 'pre-wrap' }}>
           {inquiry.message}
+        </div>
+      )}
+
+      {inquiry.status === 'Booking' && (
+        <div style={{ border: `1.5px solid ${gold}`, background: '#faf7f2', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: gold, marginBottom: 8 }}>Ready for Review</div>
+          <div style={{ fontSize: 13, color: '#444', lineHeight: 1.8, marginBottom: 12 }}>
+            <strong>Partner:</strong> {inquiry.partner_name || '—'}<br />
+            <strong>Confirmed date:</strong> {inquiry.event_date ? new Date(inquiry.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}<br />
+            {inquiry.additional_contacts && <><strong>Additional contacts:</strong> {inquiry.additional_contacts}</>}
+          </div>
+          {proposalError && <div style={{ color: '#c0392b', fontSize: 12, marginBottom: 10 }}>{proposalError}</div>}
+          <button className="btn-gold" disabled={sendingProposal} onClick={sendProposal}>
+            {sendingProposal ? 'Sending…' : 'Reviewed — Send Proposal'}
+          </button>
         </div>
       )}
 

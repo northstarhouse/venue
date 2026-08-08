@@ -128,7 +128,33 @@ async function sendTemplated(tpl: { subject: string; body: string; html_body: st
   return sendEmail(to, subject, body, html);
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // ── On-demand action: coordinator clicked "Reviewed - Send Proposal" ──
+  if (req.method === 'POST') {
+    let body: any = {};
+    try { body = await req.json(); } catch { /* no body / not JSON */ }
+    if (body?.action === 'send_proposal' && body?.inquiryId) {
+      try {
+        const templates = await getTemplates();
+        const rows = await rest(`venue_inquiries?select=*&id=eq.${body.inquiryId}`);
+        const inq = rows?.[0];
+        if (!inq) return new Response(JSON.stringify({ error: 'Inquiry not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+        if (!inq.email) return new Response(JSON.stringify({ error: 'Inquiry has no email address' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+
+        await sendTemplated(templates.proposal_sent, inq.email,
+          { name: inq.name },
+          { name: escapeHtml(inq.name) });
+
+        const nowIso = new Date().toISOString();
+        await rest(`venue_inquiries?id=eq.${inq.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Proposal Sent', proposal_sent_at: nowIso }) });
+
+        return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
+      } catch (e: any) {
+        return new Response(JSON.stringify({ error: e.message || String(e) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      }
+    }
+  }
+
   const now = new Date();
   const nowIso = now.toISOString();
   const templates = await getTemplates();
