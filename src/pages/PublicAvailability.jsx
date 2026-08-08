@@ -8,10 +8,20 @@ function dateKey(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-function expandRange(start, end) {
-  // iCal DTEND is exclusive; treat same-day (no real end) as a single day.
+function isAllDayValue(raw) {
+  // All-day iCal values are bare dates (YYYYMMDD) with no "T" time separator.
+  return !!raw && !raw.includes('T');
+}
+
+function expandRange(start, end, endIsAllDay) {
+  // All-day events' DTEND is exclusive per the iCal spec (the day after the
+  // event actually ends), so back it up one day. Timed events' DTEND is the
+  // literal end moment — same calendar day in local time for same-evening
+  // events — so it must NOT be shifted back, or short events collapse to
+  // zero days entirely.
   const keys = [];
-  const last = end && end.getTime() > start.getTime() ? new Date(end.getTime() - DAY_MS) : start;
+  const hasRealEnd = end && end.getTime() > start.getTime();
+  const last = hasRealEnd ? (endIsAllDay ? new Date(end.getTime() - DAY_MS) : end) : start;
   let cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
   const lastDay = new Date(last.getFullYear(), last.getMonth(), last.getDate());
   let guard = 0;
@@ -37,7 +47,7 @@ export default function PublicAvailability() {
           const start = parseIcalDate(e['DTSTART'] || '');
           if (!start) return;
           const end = parseIcalDate(e['DTEND'] || '');
-          expandRange(start, end).forEach((k) => set.add(k));
+          expandRange(start, end, isAllDayValue(e['DTEND'])).forEach((k) => set.add(k));
         });
         setBookedDates(set);
       })
