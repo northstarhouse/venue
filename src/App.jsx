@@ -5,11 +5,13 @@ import VenueRentals from './pages/VenueRentals.jsx';
 import Inquiries from './pages/Inquiries.jsx';
 import TourBookings from './pages/TourBookings.jsx';
 import PublicSchedule from './pages/PublicSchedule.jsx';
+import PublicAvailability from './pages/PublicAvailability.jsx';
 import { NAV_ITEMS, NavIcon } from './nav.jsx';
 
 const publicScheduleParams = new URLSearchParams(window.location.search);
 const publicScheduleId = publicScheduleParams.get('schedule');
 const publicScheduleSlotId = publicScheduleParams.get('slot');
+const showPublicAvailability = publicScheduleParams.has('availability');
 
 export const VenueContext = createContext(null);
 export const useVenue = () => useContext(VenueContext);
@@ -155,6 +157,7 @@ function Spinner({ message }) {
 // ── Main App ──────────────────────────────────────────────────────────────────
 
 export default function App() {
+  if (showPublicAvailability) return <PublicAvailability />;
   if (publicScheduleId) return <PublicSchedule inquiryId={publicScheduleId} preselectedSlotId={publicScheduleSlotId} />;
 
   const [session, setSession]             = useState(undefined);

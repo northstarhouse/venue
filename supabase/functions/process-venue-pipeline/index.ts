@@ -10,8 +10,7 @@ const LOGO_URL = 'https://northstarhouse.github.io/venue/assets/logo.png';
 const PREBOOKING_FORM_URL = 'https://northstarhouse.github.io/NSH-forms/?view=form&id=a3a383f7-e1db-4344-9dec-ea879ad3406d';
 // TODO: replace with the real hosted Client Guidebook URL once provided.
 const GUIDEBOOK_URL = 'https://northstarhouse.github.io/venue/';
-// TODO: replace with the real venue availability calendar URL once provided.
-const AVAILABILITY_CALENDAR_URL = 'https://northstarhouse.github.io/venue/';
+const AVAILABILITY_CALENDAR_URL = 'https://northstarhouse.github.io/venue/?availability=1';
 const TZ = 'America/Los_Angeles';
 
 const headers = (extra?: Record<string, string>) => ({
