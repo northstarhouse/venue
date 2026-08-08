@@ -8,6 +8,8 @@ function AddAvailabilityForm({ hosts, onAdded }) {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState('45');
+  const [repeat, setRepeat] = useState('none'); // 'none' | 'weekly'
+  const [weeks, setWeeks] = useState('8');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -15,14 +17,22 @@ function AddAvailabilityForm({ hosts, onAdded }) {
     e.preventDefault();
     if (!hostId || !date || !time) { setErr('Host, date, and time are required.'); return; }
     setBusy(true); setErr('');
+
     const start = new Date(`${date}T${time}`);
-    const end = new Date(start.getTime() + parseInt(duration, 10) * 60000);
-    const { data, error } = await supabase.from('venue_tour_availability').insert({
-      host_id: hostId, slot_start: start.toISOString(), slot_end: end.toISOString(),
-    }).select('*, venue_tour_hosts(id,name)');
+    const durationMs = parseInt(duration, 10) * 60000;
+    const count = repeat === 'weekly' ? Math.max(1, parseInt(weeks, 10) || 1) : 1;
+    const recurrenceId = repeat === 'weekly' && count > 1 ? crypto.randomUUID() : null;
+
+    const rows = Array.from({ length: count }, (_, i) => {
+      const occStart = new Date(start.getTime() + i * 7 * 24 * 60 * 60 * 1000);
+      const occEnd = new Date(occStart.getTime() + durationMs);
+      return { host_id: hostId, slot_start: occStart.toISOString(), slot_end: occEnd.toISOString(), recurrence_id: recurrenceId };
+    });
+
+    const { data, error } = await supabase.from('venue_tour_availability').insert(rows).select('*, venue_tour_hosts(id,name)');
     setBusy(false);
     if (error) { setErr(error.message); return; }
-    onAdded(data[0]);
+    onAdded(data);
     setDate(''); setTime('');
   }
 
@@ -41,8 +51,27 @@ function AddAvailabilityForm({ hosts, onAdded }) {
           <option value="60">60 min</option>
         </select>
       </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666', cursor: 'pointer' }}>
+          <input type="radio" name="repeat" checked={repeat === 'none'} onChange={() => setRepeat('none')} />
+          One-time
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666', cursor: 'pointer' }}>
+          <input type="radio" name="repeat" checked={repeat === 'weekly'} onChange={() => setRepeat('weekly')} />
+          Set as weekly schedule
+        </label>
+        {repeat === 'weekly' && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666' }}>
+            for
+            <input className="input" type="number" min="1" max="52" value={weeks} onChange={e => setWeeks(e.target.value)} style={{ width: 60 }} />
+            weeks
+          </label>
+        )}
+      </div>
       {err && <div style={{ color: '#c0392b', fontSize: 12, marginBottom: 10 }}>{err}</div>}
-      <button type="submit" className="btn-gold" disabled={busy}>{busy ? 'Adding…' : '+ Add Slot'}</button>
+      <button type="submit" className="btn-gold" disabled={busy}>
+        {busy ? 'Adding…' : repeat === 'weekly' ? `+ Add Weekly Schedule (${weeks || 0} weeks)` : '+ Add Slot'}
+      </button>
     </form>
   );
 }
@@ -81,6 +110,12 @@ export default function TourBookings() {
     if (!window.confirm('Remove this open slot?')) return;
     await supabase.from('venue_tour_availability').delete().eq('id', id);
     setOpenSlots(prev => prev.filter(s => s.id !== id));
+  }
+
+  async function removeRecurrence(recurrenceId) {
+    if (!window.confirm('Remove all future slots in this weekly schedule?')) return;
+    await supabase.from('venue_tour_availability').delete().eq('recurrence_id', recurrenceId);
+    setOpenSlots(prev => prev.filter(s => s.recurrence_id !== recurrenceId));
   }
 
   async function cancelTour(id) {
@@ -132,7 +167,7 @@ export default function TourBookings() {
 
       {!loading && !error && (
         <>
-          <AddAvailabilityForm hosts={hosts} onAdded={slot => setOpenSlots(prev => [...prev, slot].sort((a, b) => new Date(a.slot_start) - new Date(b.slot_start)))} />
+          <AddAvailabilityForm hosts={hosts} onAdded={slots => setOpenSlots(prev => [...prev, ...slots].sort((a, b) => new Date(a.slot_start) - new Date(b.slot_start)))} />
 
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, color: '#888', marginBottom: 10 }}>Open Slots ({openSlots.length})</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 26 }}>
@@ -140,10 +175,16 @@ export default function TourBookings() {
               const d = new Date(slot.slot_start);
               return (
                 <div key={slot.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', border: '0.5px solid var(--border)', borderRadius: 8, padding: '8px 14px' }}>
-                  <div style={{ fontSize: 13, color: '#444' }}>
+                  <div style={{ fontSize: 13, color: '#444', display: 'flex', alignItems: 'center', gap: 8 }}>
                     {d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })} · {d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })} · {slot.venue_tour_hosts?.name}
+                    {slot.recurrence_id && <span style={{ fontSize: 10, fontWeight: 700, background: '#f3e5f5', color: '#7c3aed', padding: '2px 8px', borderRadius: 20 }}>Weekly</span>}
                   </div>
-                  <button onClick={() => removeSlot(slot.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 16, lineHeight: 1 }}>×</button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {slot.recurrence_id && (
+                      <button onClick={() => removeRecurrence(slot.recurrence_id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#bbb', fontSize: 11 }}>remove series</button>
+                    )}
+                    <button onClick={() => removeSlot(slot.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 16, lineHeight: 1 }}>×</button>
+                  </div>
                 </div>
               );
             })}
