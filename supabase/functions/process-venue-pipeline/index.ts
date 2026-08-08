@@ -11,6 +11,8 @@ const PREBOOKING_FORM_URL = 'https://northstarhouse.github.io/NSH-forms/?view=fo
 // TODO: replace with the real hosted Client Guidebook URL once provided.
 const GUIDEBOOK_URL = 'https://northstarhouse.github.io/venue/';
 const AVAILABILITY_CALENDAR_URL = 'https://northstarhouse.github.io/venue/?availability=1';
+const QUESTIONNAIRE_FORM_URL = 'https://northstarhouse.github.io/NSH-forms/?view=form&id=e9be06b9-6788-41bc-a78a-28e02b8b749a';
+const FEEDBACK_FORM_URL = 'https://northstarhouse.github.io/NSH-forms/?view=form&id=5ebe4961-d50e-47f1-9071-e81c2ada6233';
 const TZ = 'America/Los_Angeles';
 
 const headers = (extra?: Record<string, string>) => ({
@@ -158,7 +160,7 @@ Deno.serve(async (req) => {
   const now = new Date();
   const nowIso = now.toISOString();
   const templates = await getTemplates();
-  const result: Record<string, number> = { initial: 0, followUp48h: 0, finalFollowUp30d: 0, archived: 0, tourConfirmation: 0, reminder24h: 0, reminder1h: 0, touredDocs: 0, errors: 0 };
+  const result: Record<string, number> = { initial: 0, followUp48h: 0, finalFollowUp30d: 0, archived: 0, tourConfirmation: 0, reminder24h: 0, reminder1h: 0, touredDocs: 0, questionnaireReminder: 0, completed: 0, feedbackRequested: 0, feedbackArchived: 0, errors: 0 };
 
   // ── Step 1: New wedding inquiries -> send initial guide + scheduling widget ──
   try {
@@ -299,6 +301,64 @@ Deno.serve(async (req) => {
       } catch (e) { console.error('toured_docs failed for', tour.id, e); result.errors++; }
     }
   } catch (e) { console.error('step8 query failed', e); }
+
+  // ── Step 9: 30 days before event_date -> questionnaire + insurance reminder ──
+  try {
+    const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const todayStr = now.toISOString().slice(0, 10);
+    const rows = await rest(`venue_inquiries?select=*&status=eq.Booked&questionnaire_sent_at=is.null&event_date=lte.${in30Days}&event_date=gte.${todayStr}&email=not.is.null`);
+    for (const inq of rows) {
+      try {
+        const questionnaireLink = QUESTIONNAIRE_FORM_URL;
+        const insuranceLink = `${SCHEDULING_BASE_URL}?insurance=${inq.id}`;
+        await sendTemplated(templates.questionnaire_insurance_reminder, inq.email,
+          { name: inq.name, questionnaire_link: questionnaireLink, insurance_link: insuranceLink },
+          { name: escapeHtml(inq.name), questionnaire_link: questionnaireLink, insurance_link: insuranceLink });
+        await rest(`venue_inquiries?id=eq.${inq.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Questionnaire Sent', questionnaire_sent_at: nowIso }) });
+        result.questionnaireReminder++;
+      } catch (e) { console.error('questionnaire_insurance_reminder failed for', inq.id, e); result.errors++; }
+    }
+  } catch (e) { console.error('step9 query failed', e); }
+
+  // ── Step 10: project ends (day after event_date) -> Completed ──
+  try {
+    const todayStr = now.toISOString().slice(0, 10);
+    const inList = encodeURIComponent('"New","Initial Inquiry Sent","Follow Up Sent","Final Follow Up Sent","Tour Scheduled","Toured - Docs Sent","Booking","Proposal Sent","Booked","Questionnaire Sent","Questionnaire Completed"');
+    const rows = await rest(`venue_inquiries?select=id&status=in.(${inList})&event_date=lt.${todayStr}`);
+    for (const inq of rows) {
+      try {
+        await rest(`venue_inquiries?id=eq.${inq.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Completed', completed_at: nowIso }) });
+        result.completed++;
+      } catch (e) { console.error('mark-completed failed for', inq.id, e); result.errors++; }
+    }
+  } catch (e) { console.error('step10 query failed', e); }
+
+  // ── Step 11: 7 days after Completed -> Final Feedback Questionnaire ──
+  try {
+    const cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const rows = await rest(`venue_inquiries?select=*&status=eq.Completed&completed_at=lte.${encodeURIComponent(cutoff)}&feedback_sent_at=is.null&email=not.is.null`);
+    for (const inq of rows) {
+      try {
+        await sendTemplated(templates.final_feedback_request, inq.email,
+          { name: inq.name, feedback_link: FEEDBACK_FORM_URL },
+          { name: escapeHtml(inq.name), feedback_link: FEEDBACK_FORM_URL });
+        await rest(`venue_inquiries?id=eq.${inq.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Feedback Questionnaire Sent', feedback_sent_at: nowIso }) });
+        result.feedbackRequested++;
+      } catch (e) { console.error('final_feedback_request failed for', inq.id, e); result.errors++; }
+    }
+  } catch (e) { console.error('step11 query failed', e); }
+
+  // ── Step 12: 30 days after feedback request, no response -> Archive ──
+  try {
+    const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const rows = await rest(`venue_inquiries?select=id&status=eq.${encodeURIComponent('Feedback Questionnaire Sent')}&feedback_sent_at=lte.${encodeURIComponent(cutoff)}&feedback_form_response_id=is.null`);
+    for (const inq of rows) {
+      try {
+        await rest(`venue_inquiries?id=eq.${inq.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Archive' }) });
+        result.feedbackArchived++;
+      } catch (e) { console.error('feedback-archive failed for', inq.id, e); result.errors++; }
+    }
+  } catch (e) { console.error('step12 query failed', e); }
 
   return new Response(JSON.stringify(result), { headers: { 'Content-Type': 'application/json' } });
 });

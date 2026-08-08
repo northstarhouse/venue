@@ -6,12 +6,16 @@ import Inquiries from './pages/Inquiries.jsx';
 import TourBookings from './pages/TourBookings.jsx';
 import PublicSchedule from './pages/PublicSchedule.jsx';
 import PublicAvailability from './pages/PublicAvailability.jsx';
+import PublicInsuranceUpload from './pages/PublicInsuranceUpload.jsx';
+import SiteManagerForm from './pages/SiteManagerForm.jsx';
 import { NAV_ITEMS, NavIcon } from './nav.jsx';
 
 const publicScheduleParams = new URLSearchParams(window.location.search);
 const publicScheduleId = publicScheduleParams.get('schedule');
 const publicScheduleSlotId = publicScheduleParams.get('slot');
 const showPublicAvailability = publicScheduleParams.has('availability');
+const publicInsuranceInquiryId = publicScheduleParams.get('insurance');
+const siteManagerInquiryId = publicScheduleParams.get('sitemanager');
 
 export const VenueContext = createContext(null);
 export const useVenue = () => useContext(VenueContext);
@@ -158,6 +162,7 @@ function Spinner({ message }) {
 
 export default function App() {
   if (showPublicAvailability) return <PublicAvailability />;
+  if (publicInsuranceInquiryId) return <PublicInsuranceUpload inquiryId={publicInsuranceInquiryId} />;
   if (publicScheduleId) return <PublicSchedule inquiryId={publicScheduleId} preselectedSlotId={publicScheduleSlotId} />;
 
   const [session, setSession]             = useState(undefined);
@@ -196,6 +201,7 @@ export default function App() {
   if (session === undefined) return <Spinner />;
   if (needsPassword && session) return <SetPasswordScreen onDone={() => { setNeedsPassword(false); window.history.replaceState(null, '', window.location.pathname); }} />;
   if (!session) return <AuthScreen />;
+  if (siteManagerInquiryId) return <SiteManagerForm inquiryId={siteManagerInquiryId} />;
 
   const pages = {
     inquiries: <Inquiries />,

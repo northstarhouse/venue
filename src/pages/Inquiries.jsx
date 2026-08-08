@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabase.js';
 
 const gold = '#886c44';
-const STATUSES = ['New', 'Initial Inquiry Sent', 'Follow Up Sent', 'Final Follow Up Sent', 'Tour Scheduled', 'Toured - Docs Sent', 'Booking', 'Proposal Sent', 'Booked', 'Declined', 'Archive'];
+const STATUSES = [
+  'New', 'Initial Inquiry Sent', 'Follow Up Sent', 'Final Follow Up Sent', 'Tour Scheduled', 'Toured - Docs Sent',
+  'Booking', 'Proposal Sent', 'Booked', 'Questionnaire Sent', 'Questionnaire Completed',
+  'Completed', 'Feedback Questionnaire Sent', 'Feedback Received', 'Declined', 'Archive',
+];
 const STATUS_COLORS = {
   'New': { bg: '#fff3e0', fg: '#e6862b' },
   'Initial Inquiry Sent': { bg: '#e3f2fd', fg: '#1976d2' },
@@ -13,6 +17,11 @@ const STATUS_COLORS = {
   'Booking': { bg: '#fff3e0', fg: '#c77700' },
   'Proposal Sent': { bg: '#e0f7fa', fg: '#00838f' },
   'Booked': { bg: '#e8f5e9', fg: '#2e7d32' },
+  'Questionnaire Sent': { bg: '#fff8e1', fg: '#b8860b' },
+  'Questionnaire Completed': { bg: '#e8eaf6', fg: '#3949ab' },
+  'Completed': { bg: '#e0f2f1', fg: '#00897b' },
+  'Feedback Questionnaire Sent': { bg: '#f3e5f5', fg: '#7c3aed' },
+  'Feedback Received': { bg: '#e8f5e9', fg: '#2e7d32' },
   'Declined': { bg: '#fbe9e7', fg: '#c0392b' },
   'Archive': { bg: '#f0f0f0', fg: '#888' },
 };
@@ -143,6 +152,18 @@ function InquiryCard({ inquiry, onUpdate }) {
           <button className="btn-gold" disabled={sendingProposal} onClick={sendProposal}>
             {sendingProposal ? 'Sending…' : 'Reviewed — Send Proposal'}
           </button>
+        </div>
+      )}
+
+      {['Booked', 'Questionnaire Sent', 'Questionnaire Completed'].includes(inquiry.status) && (
+        <div style={{ border: '0.5px solid var(--border)', background: 'var(--light)', borderRadius: 10, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ fontSize: 12, color: '#555' }}>
+            Insurance: <strong style={{ color: inquiry.insurance_uploaded_at ? '#2e7d32' : '#c0392b' }}>{inquiry.insurance_uploaded_at ? 'Received' : 'Not received'}</strong>
+            {inquiry.questionnaire_answers ? <span style={{ marginLeft: 12 }}>Questionnaire: <strong style={{ color: '#2e7d32' }}>Submitted</strong></span> : <span style={{ marginLeft: 12, color: '#999' }}>Questionnaire not yet submitted</span>}
+          </div>
+          <a href={`?sitemanager=${inquiry.id}`} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }}>
+            Site Manager Form →
+          </a>
         </div>
       )}
 
