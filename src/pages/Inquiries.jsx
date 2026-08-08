@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabase.js';
 
 const gold = '#886c44';
-const STATUSES = ['New', 'Contacted', 'Touring', 'Booked', 'Declined'];
+const STATUSES = ['New', 'Initial Inquiry Sent', 'Follow Up Sent', 'Final Follow Up Sent', 'Tour Scheduled', 'Toured - Docs Sent', 'Booked', 'Declined', 'Archive'];
 const STATUS_COLORS = {
-  New: { bg: '#fff3e0', fg: '#e6862b' },
-  Contacted: { bg: '#e3f2fd', fg: '#1976d2' },
-  Touring: { bg: '#f3e5f5', fg: '#7c3aed' },
-  Booked: { bg: '#e8f5e9', fg: '#2e7d32' },
-  Declined: { bg: '#fbe9e7', fg: '#c0392b' },
+  'New': { bg: '#fff3e0', fg: '#e6862b' },
+  'Initial Inquiry Sent': { bg: '#e3f2fd', fg: '#1976d2' },
+  'Follow Up Sent': { bg: '#e0f2f1', fg: '#00897b' },
+  'Final Follow Up Sent': { bg: '#fff8e1', fg: '#b8860b' },
+  'Tour Scheduled': { bg: '#f3e5f5', fg: '#7c3aed' },
+  'Toured - Docs Sent': { bg: '#ede7f6', fg: '#5e35b1' },
+  'Booked': { bg: '#e8f5e9', fg: '#2e7d32' },
+  'Declined': { bg: '#fbe9e7', fg: '#c0392b' },
+  'Archive': { bg: '#f0f0f0', fg: '#888' },
 };
 
 function StatusBadge({ status }) {

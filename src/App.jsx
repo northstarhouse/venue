@@ -3,7 +3,11 @@ import { supabase, initialAuthType } from './supabase.js';
 import Sidebar from './components/Sidebar.jsx';
 import VenueRentals from './pages/VenueRentals.jsx';
 import Inquiries from './pages/Inquiries.jsx';
+import TourBookings from './pages/TourBookings.jsx';
+import PublicSchedule from './pages/PublicSchedule.jsx';
 import { NAV_ITEMS, NavIcon } from './nav.jsx';
+
+const publicScheduleId = new URLSearchParams(window.location.search).get('schedule');
 
 export const VenueContext = createContext(null);
 export const useVenue = () => useContext(VenueContext);
@@ -149,6 +153,8 @@ function Spinner({ message }) {
 // ── Main App ──────────────────────────────────────────────────────────────────
 
 export default function App() {
+  if (publicScheduleId) return <PublicSchedule inquiryId={publicScheduleId} />;
+
   const [session, setSession]             = useState(undefined);
   const [needsPassword, setNeedsPassword] = useState(
     initialAuthType === 'invite' || initialAuthType === 'recovery'
@@ -188,6 +194,7 @@ export default function App() {
 
   const pages = {
     inquiries: <Inquiries />,
+    tours: <TourBookings />,
     venue: <VenueRentals />,
   };
   const activeItem = NAV_ITEMS.find(i => i.key === view) || NAV_ITEMS[0];
