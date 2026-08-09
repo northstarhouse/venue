@@ -59,7 +59,7 @@ const CHECKLIST_PAGE_2 = [
 
 function WalkThroughPage({ sections }) {
   return (
-    <div className="page-break" style={{ maxWidth: 760, margin: '24px auto 0', padding: '28px 24px', border: `2px solid ${gold}`, borderRadius: 4 }}>
+    <div className="page-break" style={{ maxWidth: 760, margin: '24px auto 0', padding: '28px 24px' }}>
       <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Cardo', serif", textAlign: 'center', color: gold, marginBottom: 16 }}>Walk-Through &amp; Checklist</div>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
@@ -152,7 +152,7 @@ export default function SiteManagerForm({ inquiryId }) {
       )}
 
       {/* ── Page 1: Event Information for Site Managers ── */}
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px 40px', border: `2px solid ${gold}`, borderRadius: 4 }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px 40px' }}>
         <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "'Cardo', serif", textAlign: 'center', color: gold, marginBottom: 20 }}>Event Information for Site Managers</div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 8 }}>
@@ -226,7 +226,7 @@ export default function SiteManagerForm({ inquiryId }) {
       <WalkThroughPage sections={CHECKLIST_PAGE_2} />
 
       {/* ── Page 4 top: Site Manager sign-off ── */}
-      <div className="page-break" style={{ maxWidth: 760, margin: '24px auto 0', padding: '24px 24px 0', border: `2px solid ${gold}`, borderBottom: 'none', borderRadius: '4px 4px 0 0' }}>
+      <div className="page-break" style={{ maxWidth: 760, margin: '24px auto 0', padding: '24px 24px 0' }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: gold, textAlign: 'center', marginBottom: 14 }}>Top Half to Be Completed by Site Manager</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 30px', marginBottom: 16, fontSize: 12 }}>
           {['All rentals put away', 'Trash & recycling handled properly', 'No pets on site', 'No evidence of smoking or fire'].map(label => (
@@ -252,7 +252,7 @@ export default function SiteManagerForm({ inquiryId }) {
       </div>
 
       {/* ── Page 4 bottom: Security Deposit Accounting Form ── */}
-      <div style={{ maxWidth: 760, margin: '0 auto 60px', padding: '20px 24px 28px', border: `2px solid ${gold}`, borderTop: `1px dashed ${gold}`, borderRadius: '0 0 4px 4px' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto 60px', padding: '20px 24px 28px' }}>
         <div style={{ fontSize: 10, color: '#888', textAlign: 'center', marginBottom: 12 }}>Bottom Half of Page to Be Completed by Management</div>
         <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Cardo', serif", textAlign: 'center', color: gold, marginBottom: 20 }}>Security Deposit Accounting Form</div>
 
