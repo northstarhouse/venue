@@ -5,6 +5,39 @@ const gold = '#886c44';
 
 const SCHEDULE_COLUMNS = ['Outdoor Setup', 'House Access', 'Guests Arrive', 'Ceremony', 'Cocktail Hour', 'Dining', 'Guests Leave', 'Out Time'];
 
+// Matched in order against each itinerary segment's label text (first match wins).
+const SCHEDULE_KEYWORDS = [
+  ['Outdoor Setup', /\bsetup\b/i],
+  ['House Access', /\bhouse access|inside access\b/i],
+  ['Guests Arrive', /\bguests? arriv/i],
+  ['Ceremony', /\bceremony\b/i],
+  ['Cocktail Hour', /\bcocktail/i],
+  ['Dining', /\bdinner|dining|reception meal\b/i],
+  ['Guests Leave', /\bguests? leave|departure/i],
+  ['Out Time', /\bout time|vendors? out|load.?out|cleanup complete/i],
+];
+
+// Parses free-text itineraries like "10am outdoor setup, 2pm house access,
+// 4:30-5:30pm cocktail hour" into { column: timeString }. Segments that
+// don't match a known column are returned separately so nothing is silently
+// dropped — they're shown to the site manager to fill in by hand.
+function parseItinerary(text) {
+  const schedule = {};
+  const unmatched = [];
+  if (!text) return { schedule, unmatched };
+
+  const timePattern = /^(\d{1,2}(?::\d{2})?\s*(?:am|pm)?(?:\s*-\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?)\s+(.+)$/i;
+  text.split(/[,;\n]/).map(s => s.trim()).filter(Boolean).forEach(segment => {
+    const m = segment.match(timePattern);
+    if (!m) { unmatched.push(segment); return; }
+    const [, time, label] = m;
+    const hit = SCHEDULE_KEYWORDS.find(([, re]) => re.test(label));
+    if (hit) schedule[hit[0]] = time.replace(/\s+/g, '');
+    else unmatched.push(segment);
+  });
+  return { schedule, unmatched };
+}
+
 const CHECKLIST_PAGE_1 = [
   { room: 'Terrace & West Lawn', items: ['Outside lights on', 'Lawn cleared and tidy'] },
   { room: 'Living Room', items: ['Lights on'] },
@@ -93,6 +126,8 @@ export default function SiteManagerForm({ inquiryId }) {
 
   const a = inquiry.questionnaire_answers || {};
   const eventDateStr = inquiry.event_date ? new Date(inquiry.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '';
+  const { schedule: parsedSchedule, unmatched: unmatchedItinerary } = parseItinerary(a.q39vtj2z);
+  if (a.efbv357w && !parsedSchedule['Outdoor Setup']) parsedSchedule['Outdoor Setup'] = a.efbv357w;
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff', color: '#2a2a2a', fontFamily: 'system-ui, sans-serif' }}>
@@ -151,16 +186,16 @@ export default function SiteManagerForm({ inquiryId }) {
           <tbody>
             <tr>
               {SCHEDULE_COLUMNS.map(c => (
-                <td key={c} style={{ border: '1px solid #ccc', height: 32, fontSize: 11, textAlign: 'center', padding: 3 }}>
-                  {c === 'Outdoor Setup' ? (a.efbv357w || '') : ''}
+                <td key={c} style={{ border: '1px solid #ccc', height: 32, fontSize: 11, textAlign: 'center', padding: 3, fontWeight: 600 }}>
+                  {parsedSchedule[c] || ''}
                 </td>
               ))}
             </tr>
           </tbody>
         </table>
-        {a.q39vtj2z && (
+        {unmatchedItinerary.length > 0 && (
           <div style={{ fontSize: 11, color: '#666', marginBottom: 20, background: '#faf8f5', padding: '8px 10px', borderRadius: 6 }}>
-            <strong>Itinerary from couple (transcribe into table above):</strong> {a.q39vtj2z}
+            <strong>Couldn't auto-fill from itinerary (add to table by hand):</strong> {unmatchedItinerary.join('; ')}
           </div>
         )}
 
