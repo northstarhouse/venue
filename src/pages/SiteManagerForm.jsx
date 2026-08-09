@@ -126,7 +126,7 @@ export default function SiteManagerForm({ inquiryId }) {
 
   const a = inquiry.questionnaire_answers || {};
   const eventDateStr = inquiry.event_date ? new Date(inquiry.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '';
-  const { schedule: parsedSchedule, unmatched: unmatchedItinerary } = parseItinerary(a.q39vtj2z);
+  const { schedule: parsedSchedule } = parseItinerary(a.q39vtj2z);
   if (a.efbv357w && !parsedSchedule['Outdoor Setup']) parsedSchedule['Outdoor Setup'] = a.efbv357w;
 
   return (
@@ -193,11 +193,6 @@ export default function SiteManagerForm({ inquiryId }) {
             </tr>
           </tbody>
         </table>
-        {unmatchedItinerary.length > 0 && (
-          <div style={{ fontSize: 11, color: '#666', marginBottom: 20, background: '#faf8f5', padding: '8px 10px', borderRadius: 6 }}>
-            <strong>Couldn't auto-fill from itinerary (add to table by hand):</strong> {unmatchedItinerary.join('; ')}
-          </div>
-        )}
 
         <BlankLine label="Cleanup is to be completed no later than" />
 
