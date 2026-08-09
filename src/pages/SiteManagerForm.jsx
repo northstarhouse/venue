@@ -128,6 +128,7 @@ export default function SiteManagerForm({ inquiryId }) {
   const eventDateStr = inquiry.event_date ? new Date(inquiry.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '';
   const { schedule: parsedSchedule } = parseItinerary(a.q39vtj2z);
   if (a.efbv357w && !parsedSchedule['Outdoor Setup']) parsedSchedule['Outdoor Setup'] = a.efbv357w;
+  const PAYMENTS_MADE = ['payment_retainer_paid', 'payment_installment_1_paid', 'payment_installment_2_paid', 'payment_deposit_paid'].filter(k => inquiry[k]).length;
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff', color: '#2a2a2a', fontFamily: 'system-ui, sans-serif' }}>
@@ -210,8 +211,13 @@ export default function SiteManagerForm({ inquiryId }) {
         <div style={{ fontSize: 12, fontWeight: 700, color: gold, marginTop: 16, marginBottom: 8 }}>Site Manager Notes</div>
         {[1, 2, 3].map(i => <div key={i} style={{ borderBottom: '1px solid #ccc', minHeight: 20, marginTop: 6 }}>&nbsp;</div>)}
 
-        <div style={{ marginTop: 20, fontSize: 11, color: inquiry.insurance_uploaded_at ? '#2e7d32' : '#c0392b', fontWeight: 700 }}>
-          Insurance certificate: {inquiry.insurance_uploaded_at ? `Received ${new Date(inquiry.insurance_uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : 'NOT RECEIVED'}
+        <div style={{ marginTop: 20, display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 11, fontWeight: 700 }}>
+          <div style={{ color: inquiry.insurance_uploaded_at ? '#2e7d32' : '#c0392b' }}>
+            Insurance certificate: {inquiry.insurance_uploaded_at ? `Received ${new Date(inquiry.insurance_uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : 'NOT RECEIVED'}
+          </div>
+          <div style={{ color: PAYMENTS_MADE === 4 ? '#2e7d32' : '#c0392b' }}>
+            Payments: {PAYMENTS_MADE}/4 made
+          </div>
         </div>
       </div>
 

@@ -80,14 +80,27 @@ function NewInquiryForm({ onCreated, onCancel }) {
   );
 }
 
+const PAYMENT_FIELDS = [
+  { key: 'payment_retainer_paid', label: 'Retainer ($800)' },
+  { key: 'payment_installment_1_paid', label: '50% Installment (5mo before)' },
+  { key: 'payment_installment_2_paid', label: '50% Installment (3mo before)' },
+  { key: 'payment_deposit_paid', label: 'Security Deposit ($800)' },
+];
+
 function InquiryCard({ inquiry, onUpdate }) {
   const [notes, setNotes] = useState(inquiry.notes || '');
   const [savingNotes, setSavingNotes] = useState(false);
   const [sendingProposal, setSendingProposal] = useState(false);
   const [proposalError, setProposalError] = useState('');
+  const [showPayments, setShowPayments] = useState(false);
 
   async function changeStatus(status) {
     const { data, error } = await supabase.from('venue_inquiries').update({ status }).eq('id', inquiry.id).select();
+    if (!error && data?.[0]) onUpdate(data[0]);
+  }
+
+  async function togglePayment(key) {
+    const { data, error } = await supabase.from('venue_inquiries').update({ [key]: !inquiry[key] }).eq('id', inquiry.id).select();
     if (!error && data?.[0]) onUpdate(data[0]);
   }
 
@@ -156,14 +169,29 @@ function InquiryCard({ inquiry, onUpdate }) {
       )}
 
       {['Booked', 'Questionnaire Sent', 'Questionnaire Completed'].includes(inquiry.status) && (
-        <div style={{ border: '0.5px solid var(--border)', background: 'var(--light)', borderRadius: 10, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ fontSize: 12, color: '#555' }}>
-            Insurance: <strong style={{ color: inquiry.insurance_uploaded_at ? '#2e7d32' : '#c0392b' }}>{inquiry.insurance_uploaded_at ? 'Received' : 'Not received'}</strong>
-            {inquiry.questionnaire_answers ? <span style={{ marginLeft: 12 }}>Questionnaire: <strong style={{ color: '#2e7d32' }}>Submitted</strong></span> : <span style={{ marginLeft: 12, color: '#999' }}>Questionnaire not yet submitted</span>}
+        <div style={{ border: '0.5px solid var(--border)', background: 'var(--light)', borderRadius: 10, padding: '12px 16px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ fontSize: 12, color: '#555' }}>
+              Insurance: <strong style={{ color: inquiry.insurance_uploaded_at ? '#2e7d32' : '#c0392b' }}>{inquiry.insurance_uploaded_at ? 'Received' : 'Not received'}</strong>
+              <button onClick={() => setShowPayments(v => !v)} style={{ marginLeft: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}>
+                Payments: <strong style={{ color: PAYMENT_FIELDS.every(p => inquiry[p.key]) ? '#2e7d32' : '#c0392b' }}>{PAYMENT_FIELDS.filter(p => inquiry[p.key]).length}/4 made</strong>
+              </button>
+              {inquiry.questionnaire_answers ? <span style={{ marginLeft: 12 }}>Questionnaire: <strong style={{ color: '#2e7d32' }}>Submitted</strong></span> : <span style={{ marginLeft: 12, color: '#999' }}>Questionnaire not yet submitted</span>}
+            </div>
+            <a href={`?sitemanager=${inquiry.id}`} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }}>
+              Site Manager Form →
+            </a>
           </div>
-          <a href={`?sitemanager=${inquiry.id}`} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }}>
-            Site Manager Form →
-          </a>
+          {showPayments && (
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 10, paddingTop: 10, borderTop: '0.5px solid var(--border)' }}>
+              {PAYMENT_FIELDS.map(p => (
+                <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#555', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={!!inquiry[p.key]} onChange={() => togglePayment(p.key)} />
+                  {p.label}
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
