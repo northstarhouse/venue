@@ -194,10 +194,7 @@ export default function SiteManagerForm({ inquiryId }) {
           </tbody>
         </table>
 
-        <BlankLine label="Cleanup is to be completed no later than" />
-
-        <div style={{ fontSize: 12, fontWeight: 700, color: gold, marginTop: 20, marginBottom: 8 }}>Site Manager Notes</div>
-        <div style={{ fontSize: 11, color: '#555', lineHeight: 1.8, marginBottom: 4 }}>
+        <div style={{ fontSize: 11, color: '#555', lineHeight: 1.8, marginBottom: 4, marginTop: 20 }}>
           {a.sv64qk5f && <div>Decorating inside house: <strong>{a.sv64qk5f}</strong></div>}
           {a.w25d5otp && <div>Ceremony location: <strong>{a.w25d5otp}</strong></div>}
           {a['05wji2y0'] && <div>Dining location: <strong>{a['05wji2y0']}</strong></div>}
@@ -209,6 +206,8 @@ export default function SiteManagerForm({ inquiryId }) {
           {a['7xbg0y8j'] && <div>Rental company: <strong>{a['7xbg0y8j']}</strong></div>}
           {a.ebr3yi5m && <div>Other vendors: <strong>{a.ebr3yi5m}</strong></div>}
         </div>
+
+        <div style={{ fontSize: 12, fontWeight: 700, color: gold, marginTop: 16, marginBottom: 8 }}>Site Manager Notes</div>
         {[1, 2, 3].map(i => <div key={i} style={{ borderBottom: '1px solid #ccc', minHeight: 20, marginTop: 6 }}>&nbsp;</div>)}
 
         <div style={{ marginTop: 20, fontSize: 11, color: inquiry.insurance_uploaded_at ? '#2e7d32' : '#c0392b', fontWeight: 700 }}>
